@@ -14,6 +14,7 @@ const XP = {
   firstSale: 100,    // birinchi sotuv bonusi
   subsPerXp: 20,     // har 20 yangi obunachi = 1 XP
   reachStep: 5,      // qamrov: 5 × (raqamdagi xonalar soni - 1)
+  viewStep: 5,       // reels ko'rishlari: xuddi qamrov kabi shkala
 };
 
 const LEVELS = [
@@ -73,7 +74,7 @@ function courseContext(data) {
     settings: data.settings,
     lessonsHeld: lastFilled(active, ['att']),
     hwAssigned: lastFilled(active, ['hw']),
-    weeksElapsed: lastFilled(active, ['reach', 'subs', 'income', 'video', 'stories']),
+    weeksElapsed: lastFilled(active, ['reach', 'views', 'subs', 'income', 'video', 'stories']),
   };
 }
 
@@ -91,10 +92,10 @@ function levelFor(xp) {
   };
 }
 
-function reachXp(r) {
+function scaleXp(r, step) {
   const n = num(r);
   if (!n || n < 10) return 0;
-  return XP.reachStep * Math.floor(Math.log10(n));
+  return step * Math.floor(Math.log10(n));
 }
 
 // Bir haftalik XP (video, stories, daromad, obunachi, qamrov)
@@ -108,13 +109,14 @@ function weekXp(s, w, ctx, prevSubs) {
     stories: sto * XP.story + (sto > 0 && sto >= (st.storiesNorm[w] || Infinity) ? XP.storyNorm : 0),
     income: Math.min(XP.incomeWeekCap, Math.floor(inc / XP.usdPerXp)),
     subs: 0,
-    reach: reachXp(s.reach[w]),
+    reach: scaleXp(s.reach[w], XP.reachStep),
+    views: scaleXp(s.views[w], XP.viewStep),
   };
   const subs = num(s.subs[w]);
   if (subs !== null && prevSubs !== null && subs > prevSubs) {
     parts.subs = Math.floor((subs - prevSubs) / XP.subsPerXp);
   }
-  parts.total = parts.video + parts.stories + parts.income + parts.subs + parts.reach;
+  parts.total = parts.video + parts.stories + parts.income + parts.subs + parts.reach + parts.views;
   return parts;
 }
 
@@ -151,6 +153,7 @@ function studentStats(s, ctx) {
   st.totalReach = sum(reachVals);
   st.avgReach = reachVals.length ? st.totalReach / reachVals.length : null;
   st.maxReach = reachVals.length ? Math.max(...reachVals) : 0;
+  st.totalViews = sum(s.views);
 
   // Chellenj bali — o'tgan haftalar normasi bo'yicha
   const videoNorm = sum(settings.videoNorm.slice(0, weeksElapsed));
@@ -171,7 +174,7 @@ function studentStats(s, ctx) {
   }
 
   // XP
-  const bd = { att: 0, hw: 0, video: 0, stories: 0, income: 0, subs: 0, reach: 0, bonus: 0 };
+  const bd = { att: 0, hw: 0, video: 0, stories: 0, income: 0, subs: 0, reach: 0, views: 0, bonus: 0 };
   s.att.forEach((v) => { const n = num(v); if (n >= 1) bd.att += XP.live; else if (n > 0) bd.att += XP.record; });
   bd.hw = s.hw.filter((v) => num(v) > 0).length * XP.homework;
   st.weekly = [];
@@ -180,7 +183,7 @@ function studentStats(s, ctx) {
     const p = weekXp(s, w, ctx, prevSubs);
     if (has(s.subs[w])) prevSubs = num(s.subs[w]);
     st.weekly.push(p.total);
-    bd.video += p.video; bd.stories += p.stories; bd.income += p.income; bd.subs += p.subs; bd.reach += p.reach;
+    bd.video += p.video; bd.stories += p.stories; bd.income += p.income; bd.subs += p.subs; bd.reach += p.reach; bd.views += p.views;
   }
   if (st.income > 0) bd.bonus += XP.firstSale;
   st.xpBreakdown = bd;

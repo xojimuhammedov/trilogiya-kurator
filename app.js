@@ -2,6 +2,8 @@
   const G = window.Game;
   const KEY = 'trilogiya:v1';
   const PREF = 'trilogiya:prefs';
+  const WEEKLY = ['reach', 'views', 'subs', 'income', 'video', 'stories'];
+  const IG_SOURCE = 'https://raw.githubusercontent.com/xojimuhammedov/trilogiya-kurator/main/data/instagram.json';
 
   // ---------- holat ----------
   let data = load();
@@ -11,14 +13,14 @@
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function normalize(d) {
-    d.settings = Object.assign({ courseName: 'Kurs', lessons: 15, weeks: 12 }, d.settings);
+    d.settings = Object.assign({ courseName: 'Kurs', lessons: 15, weeks: 12, startDate: '2026-08-31', igSource: IG_SOURCE }, d.settings);
     const { lessons, weeks } = d.settings;
     const fit = (a, n) => Array.from({ length: n }, (_, i) => (a && a[i] !== undefined ? a[i] : null));
     d.settings.videoNorm = fit(d.settings.videoNorm, weeks).map((v) => (v === null ? 3 : v));
     d.settings.storiesNorm = fit(d.settings.storiesNorm, weeks).map((v) => (v === null ? 3 : v));
     d.students.forEach((s) => {
       s.att = fit(s.att, lessons); s.hw = fit(s.hw, lessons);
-      ['reach', 'subs', 'income', 'video', 'stories'].forEach((k) => { s[k] = fit(s[k], weeks); });
+      WEEKLY.forEach((k) => { s[k] = fit(s[k], weeks); });
     });
     return d;
   }
@@ -303,7 +305,7 @@
     const weeks = Array.from({ length: Math.max(ctx.weeksElapsed, 1) }, (_, w) => w);
     const bd = st.xpBreakdown;
     const bdMax = Math.max(1, ...Object.values(bd));
-    const bdRows = [['Davomat', bd.att], ['Vazifalar', bd.hw], ['Reels', bd.video], ['Stories', bd.stories], ['Daromad', bd.income], ['Birinchi sotuv bonusi', bd.bonus], ['Obunachi o\'sishi', bd.subs], ['Qamrov', bd.reach]];
+    const bdRows = [['Davomat', bd.att], ['Vazifalar', bd.hw], ['Reels', bd.video], ['Stories', bd.stories], ['Daromad', bd.income], ['Birinchi sotuv bonusi', bd.bonus], ['Obunachi o\'sishi', bd.subs], ['Reels ko\'rishlari', bd.views], ['Qamrov', bd.reach]];
 
     return `<div class="stack">
       <div class="profile-head">
@@ -350,11 +352,12 @@
 
     <div class="section-title"><h2>Haftalik natijalar</h2></div>
     <div class="card flush scroll-x"><table class="wk">
-      <thead><tr><th>Hafta</th><th>Reels</th><th>Stories</th><th>Qamrov</th><th>Obunachi</th><th>Daromad</th><th>XP</th></tr></thead>
+      <thead><tr><th>Hafta</th><th>Reels</th><th>Stories</th><th>Ko'rish</th><th>Qamrov</th><th>Obunachi</th><th>Daromad</th><th>XP</th></tr></thead>
       <tbody>${weeks.map((w) => `<tr>
         <td>${w + 1}</td>
         <td style="color:${G.num(s.video[w]) >= S.videoNorm[w] ? 'var(--ok)' : 'inherit'}">${G.has(s.video[w]) ? fmt(G.num(s.video[w])) : '—'}<span class="faint">/${S.videoNorm[w]}</span></td>
         <td style="color:${G.num(s.stories[w]) >= S.storiesNorm[w] ? 'var(--ok)' : 'inherit'}">${G.has(s.stories[w]) ? fmt(G.num(s.stories[w])) : '—'}<span class="faint">/${S.storiesNorm[w]}</span></td>
+        <td>${compact(G.num(s.views[w]))}</td>
         <td>${compact(G.num(s.reach[w]))}</td>
         <td>${G.has(s.subs[w]) ? fmt(G.num(s.subs[w])) : '—'}</td>
         <td>${money(G.num(s.income[w]))}</td>
@@ -367,8 +370,9 @@
     <div class="section-title"><h2>Instagram</h2></div>
     <div class="card soon">
       <div class="ic">${ic('sparkles')}</div>
-      <div><div style="font-weight:800">Reels qamrovini AI o'qiydi <span class="tag">Tez kunda</span></div>
-      <div class="small muted" style="margin-top:4px">Profildagi reels'lar qamrovi avtomatik olinib, haftalik «Qamrov» ustuniga o'zi yoziladi.</div></div>
+      <div><div style="font-weight:800">AI agent kuzatadi</div>
+      <div class="small muted" style="margin-top:4px">${s.instagram ? `Har dushanba @${esc(s.instagram)} profilidan o'tgan haftadagi reels soni, ko'rishlari va obunachilar soni o'zi yoziladi.` : "Agent ishlashi uchun anketaga Instagram akkauntini kiriting."}</div>
+      <div class="small faint num" style="margin-top:6px">${igStudentNote(s)}</div></div>
     </div>`;
   }
 
@@ -376,6 +380,7 @@
   const METRICS = {
     video: { label: 'Reels', hint: 'Shu haftadagi reels/video soni' },
     stories: { label: 'Stories', hint: 'Shu haftadagi stories liniyalar soni' },
+    views: { label: "Ko'rishlar", hint: "Shu haftada qo'yilgan reels'lar ko'rishlari · agent yozadi" },
     reach: { label: 'Qamrov', hint: 'Profil qamrovi (охват)' },
     subs: { label: 'Obunachi', hint: 'Hafta oxiridagi umumiy obunachilar' },
     income: { label: 'Daromad $', hint: 'Blog orqali kelgan daromad, $' },
@@ -413,7 +418,7 @@
       }).join('');
     } else {
       const W = ui.week, M = ui.metric;
-      const wFilled = (w) => rows.some((r) => ['video', 'stories', 'reach', 'subs', 'income'].some((k) => G.has(r.s[k][w])));
+      const wFilled = (w) => rows.some((r) => WEEKLY.some((k) => G.has(r.s[k][w])));
       tools = `<div class="chips" data-scroll="weeks">${Array.from({ length: S.weeks }, (_, w) => `<button class="chip ${w === W ? 'on' : ''} ${wFilled(w) ? 'done' : ''}" data-act="week" data-v="${w}">${w + 1}-hafta</button>`).join('')}</div>
         <div class="chips">${Object.entries(METRICS).map(([k, m]) => `<button class="chip ${k === M ? 'on' : ''}" data-act="metric" data-v="${k}">${m.label}</button>`).join('')}</div>
         <div class="summary"><span class="norm-note">${METRICS[M].hint}${M === 'video' ? ` · norma <b>${S.videoNorm[W]}</b>` : M === 'stories' ? ` · norma <b>${S.storiesNorm[W]}</b>` : ''}</span><span id="wsum" class="num">${weekSum(M, W)}</span></div>`;
@@ -433,7 +438,7 @@
   function weekSum(M, W) {
     const t = calc.rows.reduce((a, r) => a + (G.num(r.s[M][W]) || 0), 0);
     const n = calc.rows.filter((r) => G.has(r.s[M][W])).length;
-    const v = M === 'income' ? money(t) : M === 'reach' ? compact(t) : fmt(t);
+    const v = M === 'income' ? money(t) : M === 'reach' || M === 'views' ? compact(t) : fmt(t);
     return `${n}/${calc.rows.length} · <b>${M === 'subs' ? '' : 'jami ' + v}</b>`;
   }
 
@@ -442,6 +447,7 @@
     xp: { label: 'XP', val: (st) => st.xp, show: (st) => `${fmt(st.xp)} XP`, sub: (st) => st.level.name },
     income: { label: 'Daromad', val: (st) => st.income, show: (st) => money(st.income) },
     growth: { label: "O'sish", val: (st) => st.growth || 0, show: (st) => '+' + fmt(st.growth) },
+    views: { label: "Ko'rishlar", val: (st) => st.totalViews, show: (st) => compact(st.totalViews) },
     reach: { label: 'Qamrov', val: (st) => st.avgReach || 0, show: (st) => compact(st.avgReach) },
     hw: { label: 'Vazifa', val: (st) => st.hwPct || 0, show: (st) => pct(st.hwPct) },
     att: { label: 'Davomat', val: (st) => st.attPct || 0, show: (st) => pct(st.attPct) },
@@ -494,6 +500,7 @@
     <div class="section-title"><h2>Kurs</h2></div>
     <div class="card stack">
       <div class="field"><label>Kurs nomi</label><input data-set="courseName" value="${esc(S.courseName)}"></div>
+      <div class="field"><label>1-hafta boshlangan kun (dushanba)</label><input type="date" data-set="startDate" value="${esc(S.startDate)}"></div>
       <div class="field"><label>Mavzu</label>
         <div class="seg">${[['auto', 'Avto'], ['light', "Yorug'"], ['dark', "Qorong'i"]].map(([k, l]) => `<button class="${(prefs.theme || 'auto') === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div></div>
     </div>
@@ -514,6 +521,7 @@
       <div class="r"><span>Birinchi sotuv bonusi</span><b class="xp">+${X.firstSale} XP</b></div>
       <div class="r"><span>Obunachi o'sishi</span><b class="xp">${X.subsPerXp} ta = 1 XP</b></div>
       <div class="r"><span>Haftalik qamrov: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
+      <div class="r"><span>Haftalik reels ko'rishlari: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
     </div>
 
     <div class="section-title"><h2>Darajalar</h2></div>
@@ -521,6 +529,17 @@
 
     <div class="section-title"><h2>Holat qoidasi</h2></div>
     <div class="card flush rules">${Object.entries(G.STATUSES).map(([k, v]) => `<div class="r">${statusChip(k)}<span style="text-align:right">${v.hint}</span></div>`).join('')}</div>
+
+    <div class="section-title"><h2>Instagram agent</h2></div>
+    <div class="card stack">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div class="ic" style="width:42px;height:42px;border-radius:13px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none">${ic('sparkles')}</div>
+        <div><div style="font-weight:800">Reels va obunachilar avtomatik</div>
+        <div class="small muted" style="margin-top:4px">Har dushanba AI agent o'tgan haftada (dushanba–yakshanba) qo'yilgan reels'lar soni, ko'rishlari va obunachilarni yozadi.</div>
+        <div class="small faint num" style="margin-top:6px">${igStatus()}</div></div>
+      </div>
+      <button class="btn ghost block" data-act="ig-sync">${ic('refresh')}Hozir yangilash</button>
+    </div>
 
     <div class="section-title"><h2>Ma'lumotlar</h2></div>
     <div class="card stack">
@@ -538,7 +557,6 @@
 
     <div class="section-title"><h2>Tez kunda</h2></div>
     <div class="stack">
-      <div class="card soon"><div class="ic">${ic('sparkles')}</div><div><div style="font-weight:800">AI: Reels qamrovini avtomatik olish</div><div class="small muted" style="margin-top:4px">Instagram profilidagi reels'lar qamrovi AI orqali o'qiladi va haftalik jadvalga o'zi yoziladi.</div></div></div>
       <div class="card soon"><div class="ic">${ic('cloud')}</div><div><div style="font-weight:800">Bulutli sinxronizatsiya</div><div class="small muted" style="margin-top:4px">Bir nechta kurator bitta bazada, real vaqtda ishlaydi.</div></div></div>
     </div>`;
   }
@@ -614,6 +632,64 @@
     return '﻿' + [head.map(q).join(','), ...lines].join('\n');
   }
 
+  // ---------- Instagram agent ma'lumotlari ----------
+  // Agent data/instagram.json ga yozadi: weeks["2026-11-02"]["akkaunt"] = { followers, reels, views, checkedAt }
+  const DAY = 864e5;
+  function weekIndex(monday) {
+    const a = Date.parse(monday + 'T00:00:00');
+    const b = Date.parse(data.settings.startDate + 'T00:00:00');
+    return Math.round((a - b) / (7 * DAY));
+  }
+  function when(iso) {
+    const t = new Date(iso);
+    if (Number.isNaN(t.getTime())) return iso;
+    const hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    return `${t.getDate()}-${MONTHS[t.getMonth()]}, ${hm}`;
+  }
+  function handleKey(h) { return String(h || '').trim().replace(/^@/, '').toLowerCase(); }
+  function igStatus() {
+    const m = data.igMeta;
+    if (!m || !m.updatedAt) return "Hali ma'lumot kelmagan";
+    return `Oxirgi yozuv: ${when(m.updatedAt)} · ${m.profiles || 0} profil`;
+  }
+  function igStudentNote(s) {
+    const m = data.igMeta && data.igMeta.byHandle && data.igMeta.byHandle[handleKey(s.instagram)];
+    return m ? `Oxirgi tekshiruv: ${when(m)}` : '';
+  }
+  async function syncInstagram(manual) {
+    let json = null;
+    for (const url of [data.settings.igSource || IG_SOURCE, 'data/instagram.json']) {
+      try {
+        const res = await fetch(url + (url.startsWith('http') ? '?t=' + Date.now() : ''), { cache: 'no-store' });
+        if (res.ok) { json = await res.json(); break; }
+      } catch (e) { /* keyingi manbani sinaymiz */ }
+    }
+    if (!json || !json.weeks) { if (manual) toast("Instagram ma'lumotini olib bo'lmadi"); return; }
+    const byHandle = {};
+    data.students.forEach((s) => { if (s.instagram) byHandle[handleKey(s.instagram)] = s; });
+    let changed = 0;
+    const seen = {};
+    Object.entries(json.weeks).forEach(([monday, profiles]) => {
+      const w = weekIndex(monday);
+      if (w < 0 || w >= data.settings.weeks) return;
+      Object.entries(profiles).forEach(([h, v]) => {
+        const s = byHandle[handleKey(h)];
+        if (!s || !v) return;
+        [['video', v.reels], ['views', v.views], ['subs', v.followers]].forEach(([k, val]) => {
+          if (val === null || val === undefined) return;
+          if (s[k][w] !== val) { s[k][w] = val; changed++; }
+        });
+        seen[handleKey(h)] = v.checkedAt || monday;
+      });
+    });
+    data.igMeta = { updatedAt: json.updatedAt, profiles: Object.keys(seen).length, byHandle: seen };
+    commit();
+    if (changed || manual) {
+      render(true);
+      toast(changed ? `Instagram: ${changed} ta raqam yangilandi` : 'Instagram: yangi raqam yo\'q');
+    }
+  }
+
   // ---------- hodisalar ----------
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act]');
@@ -641,6 +717,7 @@
           byId(id).archived = true; commit(); document.querySelector('.overlay')?.remove(); location.hash = '#/students';
         }
         break;
+      case 'ig-sync': syncInstagram(true); break;
       case 'restore': delete byId(id).archived; commit(); render(true); toast('Qaytarildi'); break;
       case 'theme': setPref('theme', v); applyTheme(); render(true); break;
       case 'install': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; render(true); }); } break;
@@ -682,6 +759,7 @@
     } else if (t.dataset.set) {
       data.settings[t.dataset.set] = t.value.trim() || data.settings[t.dataset.set];
       commit(); toast('Saqlandi');
+      if (t.dataset.set === 'startDate') syncInstagram(false);
     } else if (t.dataset.norm) {
       const n = G.num(t.value);
       if (n === null || n < 0) { t.value = data.settings[t.dataset.norm][+t.dataset.i]; return; }
@@ -726,4 +804,5 @@
 
   applyTheme();
   render();
+  syncInstagram(false);
 })();
