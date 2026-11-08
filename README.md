@@ -45,18 +45,30 @@ Fayllarni yangilaganda `sw.js` dagi `VERSION` ni oshiring — telefonlar yangi v
 | Obunachi o'sishi | 20 ta = 1 XP |
 | Haftalik qamrov 1K/10K/100K/1M | +15/20/25/30 |
 | Haftalik reels ko'rishlari 1K/10K/100K/1M | +15/20/25/30 |
-| Networking: tanishuv · xulosa · natija | +15 · +10 · +25 |
+| Networking: tanishuv · insayt · natija | +15 · +10 · +25 |
 
 8 daraja: Yangi → Ijodkor → Kontentchi → Blogger → Trend → Influencer → Star → Legenda.
 15 ta nishon. Barcha qiymatlar xom raqamlardan har safar qayta hisoblanadi.
 
+## Kirish (hozircha mock)
+
+Ilova telefon raqam bilan ochiladi, boshqa hech narsa so'ralmaydi:
+
+- **Kurator** raqami bilan kirilsa — to'liq panel (o'quvchilar, kiritish, reyting, sozlamalar).
+- **O'quvchi** raqami bilan kirilsa — faqat **o'z profili** va **reyting**. O'quvchi o'z networking daraxtiga
+  tanishuv va undan olgan insaytlarini qo'shadi. Boshqalarning profilini ocha olmaydi.
+
+Hozir hammasi frontend'da: raqamlar `seed.js` dagi mock ma'lumotdan tekshiriladi, SMS kod yo'q,
+ma'lumot qurilmaning o'zida saqlanadi. Demo: kurator `90 000 00 00`, o'quvchi `90 100 00 05`.
+Backend ulanganda raqamni tasdiqlash (SMS yoki Telegram) va umumiy baza qo'shiladi.
+
 ## Networking
 
 O'quvchi profilida **Networking** bo'limi bor. Kurs davomida kim bilan tanishgani (ism, soha, kursdoshmi),
-undan qanday **xulosa** olgani va bu tanishuv qanday **natija** berganini (maslahat, kollab, hamkorlik, mijoz, mentor) yoziladi.
+undan qanday **insayt** olgani va bu tanishuv qanday **natija** berganini (maslahat, kollab, hamkorlik, mijoz, mentor) yoziladi.
 
 - Tanishuvlar **daraxt** ko'rinishida: «Kim orqali tanishdi» tanlansa, yangi odam o'sha tanishning ostiga shoxlanadi.
-- «Ulashish» tugmasi butun daraxtni xulosalari bilan matn qilib, Telegram guruhga tashlashga tayyorlaydi.
+- «Ulashish» tugmasi butun daraxtni insaytlari bilan matn qilib, Telegram guruhga tashlashga tayyorlaydi.
 - Nishonlar: Networker (5+ tanishuv), Ko'prik (tanish orqali tanishuv), Turli sohalar (4+ soha).
 - Reytingda alohida «Networking» bo'limi.
 

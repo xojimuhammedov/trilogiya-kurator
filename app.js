@@ -13,7 +13,8 @@
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function normalize(d) {
-    d.settings = Object.assign({ courseName: 'Kurs', lessons: 15, weeks: 12, startDate: '2026-08-31', igSource: IG_SOURCE }, d.settings);
+    d.settings = Object.assign({ courseName: 'Kurs', lessons: 15, weeks: 12, startDate: '2026-08-31', igSource: IG_SOURCE, curatorPhones: ['+998900000000'] }, d.settings);
+    const seedPhone = Object.fromEntries(window.SEED.students.map((x) => [x.id, x.phone]));
     const { lessons, weeks } = d.settings;
     const fit = (a, n) => Array.from({ length: n }, (_, i) => (a && a[i] !== undefined ? a[i] : null));
     d.settings.videoNorm = fit(d.settings.videoNorm, weeks).map((v) => (v === null ? 3 : v));
@@ -22,6 +23,7 @@
       s.att = fit(s.att, lessons); s.hw = fit(s.hw, lessons);
       WEEKLY.forEach((k) => { s[k] = fit(s[k], weeks); });
       if (!Array.isArray(s.network)) s.network = [];
+      if (!s.phone && seedPhone[s.id]) s.phone = seedPhone[s.id];
     });
     return d;
   }
@@ -36,6 +38,35 @@
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { toast('Saqlab bo\'lmadi — brauzer xotirasi yopiq'); }
   }
   function getPrefs() { try { return JSON.parse(localStorage.getItem(PREF)) || {}; } catch (e) { return {}; } }
+  // ---------- kirish (hozircha faqat frontend: raqam ro'yxatda bo'lsa kiradi, SMS kod backend bilan qo'shiladi) ----------
+  const SESSION = 'trilogiya:session';
+  let session = loadSession();
+  function loadSession() { try { return JSON.parse(localStorage.getItem(SESSION)); } catch (e) { return null; } }
+  function phoneKey(p) { return String(p || '').replace(/\D/g, '').slice(-9); }
+  function prettyPhone(p) { const d = phoneKey(p); return d.length === 9 ? `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}` : (p || ''); }
+  const isStudent = () => session && session.role === 'student';
+  const meId = () => (isStudent() ? session.studentId : null);
+  // O'quvchi faqat o'z profilini ochadi; boshqalarning profiliga havola qo'yilmaydi
+  function plink(id) { return !isStudent() || id === meId() ? `href="#/s/${id}"` : ''; }
+  function login(raw) {
+    const k = phoneKey(raw);
+    if (k.length !== 9) return "Raqamni to'liq kiriting";
+    if ((data.settings.curatorPhones || []).some((p) => phoneKey(p) === k)) session = { role: 'curator', phone: '+998' + k };
+    else {
+      const st = data.students.find((x) => !x.archived && phoneKey(x.phone) === k);
+      if (!st) return "Bu raqam ro'yxatda yo'q. Kuratoringizga murojaat qiling.";
+      session = { role: 'student', studentId: st.id, phone: '+998' + k };
+    }
+    try { localStorage.setItem(SESSION, JSON.stringify(session)); } catch (e) { /* */ }
+    return null;
+  }
+  function logout() {
+    session = null;
+    try { localStorage.removeItem(SESSION); } catch (e) { /* */ }
+    location.hash = '#/';
+    render();
+  }
+
   function setPref(k, v) { const p = getPrefs(); p[k] = v; try { localStorage.setItem(PREF, JSON.stringify(p)); } catch (e) { /* */ } }
 
   // O'zgarishdan keyin XP/daraja/nishon farqini ko'rsatadi
@@ -118,6 +149,7 @@
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     file: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
     check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    logout: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/>',
     share: '<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 13v5.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V13"/>',
     network: '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5 5 16.5M12 11.5l7 5"/>',
     trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -156,6 +188,13 @@
       ${opts.action || ''}`;
   }
   function tabs(page) {
+    if (isStudent()) {
+      const active = page === 'top' ? 'top' : 'me';
+      $('#tabs').className = 'two';
+      $('#tabs').innerHTML = `<a href="#/s/${meId()}" class="${active === 'me' ? 'on' : ''}">${ic('users')}Profilim</a><a href="#/top" class="${active === 'top' ? 'on' : ''}">${ic('trophy')}Reyting</a>`;
+      return;
+    }
+    $('#tabs').className = '';
     const t = [
       ['home', 'Bosh', 'home'], ['students', "O'quvchilar", 'users'], ['input', 'Kiritish', 'plus'],
       ['top', 'Reyting', 'trophy'], ['more', "Ko'proq", 'sliders'],
@@ -167,7 +206,14 @@
   }
   function render(keepScroll) {
     const y = window.scrollY;
+    document.body.classList.toggle('auth', !session);
+    if (!session) { renderLogin(); return; }
+    if (isStudent() && !byId(meId())) { logout(); return; }
     const { page, arg } = route();
+    if (isStudent() && !(page === 'top' || (page === 's' && arg === meId()))) {
+      location.replace('#/s/' + meId());
+      return;
+    }
     tabs(page);
     const view = { home, students, s: () => profile(arg), input, top, more }[page] || home;
     $('#view').innerHTML = view();
@@ -175,6 +221,36 @@
     afterRender(page);
   }
   window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+
+  // ---------- KIRISH ----------
+  function renderLogin() {
+    $('#top').innerHTML = '';
+    $('#tabs').innerHTML = '';
+    $('#view').innerHTML = `
+      <form class="login" id="login" novalidate>
+        <img src="icons/icon-192.png" alt="" width="64" height="64" class="login-logo">
+        <h1>${esc(data.settings.courseName)}</h1>
+        <p class="muted">Telefon raqamingiz bilan kiring</p>
+        <label class="phone"><span>+998</span><input id="phone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="90 123 45 67" maxlength="12"></label>
+        <div class="login-err" id="login-err"></div>
+        <button class="btn block" type="submit">Kirish</button>
+        <p class="faint small login-demo">Demo: kurator <b>90 000 00 00</b> · o'quvchi <b>90 100 00 05</b></p>
+      </form>`;
+    const inp = $('#phone');
+    inp.addEventListener('input', () => {
+      const d = inp.value.replace(/\D/g, '').replace(/^998/, '').slice(0, 9);
+      inp.value = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean).join(' ');
+      $('#login-err').textContent = '';
+    });
+    $('#login').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const err = login(inp.value);
+      if (err) { $('#login-err').textContent = err; return; }
+      location.hash = isStudent() ? '#/s/' + meId() : '#/';
+      render();
+      window.scrollTo(0, 0);
+    });
+  }
 
   // ---------- BOSH ----------
   function home() {
@@ -247,7 +323,7 @@
     const cls = ['p2', 'p1', 'p3'];
     const place = [2, 1, 3];
     return `<div class="podium">${order.map((r, i) => r ? `
-      <a class="pod ${cls[i]}" href="#/s/${r.s.id}">
+      <a class="pod ${cls[i]}" ${plink(r.s.id)}>
         ${avatar(r.s, r.st)}
         <div class="nm">${esc(r.s.name)}</div>
         <div class="vv num">${val(r)}</div>
@@ -295,10 +371,16 @@
     const { s, st } = r;
     const { ctx } = calc;
     const S = data.settings;
-    topbar('Profil', `${st.rank}-o'rin · ${calc.rows.length} kishidan`, {
-      back: '#/students',
-      action: `<button class="icon-btn" data-act="edit-student" data-id="${s.id}" aria-label="Tahrirlash">${ic('edit')}</button>`,
-    });
+    if (isStudent()) {
+      topbar(`Salom, ${esc(s.name.split(' ')[0])}`, `${st.rank}-o'rin · ${calc.rows.length} kishidan`, {
+        action: `<button class="icon-btn" data-act="logout" aria-label="Chiqish">${ic('logout')}</button>`,
+      });
+    } else {
+      topbar('Profil', `${st.rank}-o'rin · ${calc.rows.length} kishidan`, {
+        back: '#/students',
+        action: `<button class="icon-btn" data-act="edit-student" data-id="${s.id}" aria-label="Tahrirlash">${ic('edit')}</button>`,
+      });
+    }
     const lv = st.level;
     const goal = G.num(s.goal);
     const attDot = (v, i) => {
@@ -471,7 +553,7 @@
     const rest = list.slice(3);
     return `<div class="stack">${chips}
       <div class="card">${podiumHtml(list.slice(0, 3), (r) => c.show(r.st))}</div>
-      ${rest.length ? `<div class="card flush list">${rest.map((r, i) => `<a class="row" href="#/s/${r.s.id}"><span class="rank num">${i + 4}</span>${avatar(r.s, r.st)}<div class="main"><div class="name">${esc(r.s.name)}</div><div class="meta">${c.sub ? c.sub(r.st) : r.st.level.name}</div></div><div class="end big num">${c.show(r.st)}</div></a>`).join('')}</div>` : ''}
+      ${rest.length ? `<div class="card flush list">${rest.map((r, i) => `<a class="row ${r.s.id === meId() ? 'me' : ''}" ${plink(r.s.id)}><span class="rank num">${i + 4}</span>${avatar(r.s, r.st)}<div class="main"><div class="name">${esc(r.s.name)}</div><div class="meta">${c.sub ? c.sub(r.st) : r.st.level.name}</div></div><div class="end big num">${c.show(r.st)}</div></a>`).join('')}</div>` : ''}
       ${!list.length ? '<div class="empty">Bu ko\'rsatkich bo\'yicha hali natija yo\'q</div>' : ''}
     </div>`;
   }
@@ -505,6 +587,13 @@
       <div class="small muted" style="margin:4px 0 10px">${isIOS ? 'Safari\'da «Ulashish» → «Bosh ekranga qo\'shish» ni bosing.' : 'Ilova bosh ekranda alohida ochiladi va internetsiz ham ishlaydi.'}</div>
       ${isIOS ? '' : `<button class="btn sm" data-act="install" ${installPrompt ? '' : 'disabled'}>${ic('download')}O'rnatish</button>`}</div></div>`}
 
+    <div class="section-title"><h2>Akkaunt</h2></div>
+    <div class="card flush rules">
+      <div class="r"><span>Kurator</span><b class="num">${esc(prettyPhone(session.phone))}</b></div>
+      <div class="r"><span>Kurator raqamlari</span><b class="num">${(S.curatorPhones || []).map(prettyPhone).map(esc).join(', ')}</b></div>
+    </div>
+    <button class="btn ghost block" style="margin-top:10px" data-act="logout">${ic('logout')}Chiqish</button>
+
     <div class="section-title"><h2>Kurs</h2></div>
     <div class="card stack">
       <div class="field"><label>Kurs nomi</label><input data-set="courseName" value="${esc(S.courseName)}"></div>
@@ -530,7 +619,7 @@
       <div class="r"><span>Obunachi o'sishi</span><b class="xp">${X.subsPerXp} ta = 1 XP</b></div>
       <div class="r"><span>Haftalik qamrov: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
       <div class="r"><span>Haftalik reels ko'rishlari: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
-      <div class="r"><span>Networking: tanishuv · xulosa · natija</span><b class="xp">+${X.contact} · +${X.takeaway} · +${X.netResult}</b></div>
+      <div class="r"><span>Networking: tanishuv · insayt · natija</span><b class="xp">+${X.contact} · +${X.takeaway} · +${X.netResult}</b></div>
     </div>
 
     <div class="section-title"><h2>Darajalar</h2></div>
@@ -589,7 +678,7 @@
       const ch = netKids(s, n.id);
       return `<li><button class="node" data-act="net-open" data-id="${s.id}" data-nid="${n.id}">
           <div class="node-top"><b>${esc(n.name)}</b>${n.field ? `<span class="tag soft">${esc(n.field)}</span>` : ''}</div>
-          <div class="node-take ${n.takeaway ? '' : 'faint'}">${n.takeaway ? esc(n.takeaway) : 'Xulosa hali yozilmagan'}</div>
+          <div class="node-take ${n.takeaway ? '' : 'faint'}">${n.takeaway ? esc(n.takeaway) : 'Insayt hali yozilmagan'}</div>
           ${n.result && n.result !== 'none' ? `<div class="node-res">${ic('check')}${NET_RESULTS[n.result] || ''}${n.resultNote ? ' · ' + esc(n.resultNote) : ''}</div>` : ''}
         </button>${ch.length ? `<ul>${ch.map(node).join('')}</ul>` : ''}</li>`;
     };
@@ -599,12 +688,12 @@
       <div class="net-stats num">
         <div><b>${N.contacts}</b><span>Tanishuv</span></div>
         <div><b>${N.fields}</b><span>Soha</span></div>
-        <div><b>${N.takeaways}</b><span>Xulosa</span></div>
+        <div><b>${N.takeaways}</b><span>Insayt</span></div>
         <div><b>${N.results}</b><span>Natija</span></div>
       </div>
       ${Object.keys(fields).length ? `<div class="net-fields">${Object.entries(fields).sort((a, b) => b[1] - a[1]).map(([f, c]) => `<span class="link-chip">${esc(f)}<b class="num">${c}</b></span>`).join('')}</div>` : ''}
       <div class="tree">
-        <div class="tree-root">${avatar(s, st)}<div><div style="font-weight:800">${esc(s.name)}</div><div class="small faint">${N.contacts ? `${N.contacts} ta tanishuv · ${N.depth} bosqichli daraxt` : "Kurs davomida turli soha egalari bilan tanishing: kim bilan, qanday xulosa oldingiz va nima natija berdi."}</div></div></div>
+        <div class="tree-root">${avatar(s, st)}<div><div style="font-weight:800">${esc(s.name)}</div><div class="small faint">${N.contacts ? `${N.contacts} ta tanishuv · ${N.depth} bosqichli daraxt` : "Kurs davomida turli soha egalari bilan tanishing: kim bilan, qanday insayt oldingiz va nima natija berdi."}</div></div></div>
         ${s.network.length ? `<ul>${netKids(s, '').map(node).join('')}</ul>` : ''}
       </div>
       <button class="btn ghost block" data-act="net-add" data-id="${s.id}">${ic('plus')}Tanishuv qo'shish</button>
@@ -634,7 +723,7 @@
         <div class="field"><label>Sana</label><input type="date" name="date" value="${v('date')}"></div>
       </div>
       <datalist id="net-fields">${NET_FIELDS.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
-      <div class="field"><label>Qanday xulosa oldi?</label><textarea name="takeaway" placeholder="Masalan: reels'ning birinchi 3 soniyasi hal qiladi — savol bilan boshlash kerak">${v('takeaway')}</textarea></div>
+      <div class="field"><label>Undan qanday insayt oldingiz?</label><textarea name="takeaway" placeholder="Masalan: reels'ning birinchi 3 soniyasi hal qiladi — savol bilan boshlash kerak">${v('takeaway')}</textarea></div>
       <div class="grid2">
         <div class="field"><label>Natija</label><select name="result">${Object.entries(NET_RESULTS).map(([k, l]) => `<option value="${k}" ${n.result === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Natija haqida</label><input name="resultNote" value="${v('resultNote')}" placeholder="2 ta kollab reels"></div>
@@ -706,6 +795,7 @@
       <div class="grab"></div>
       <h3>${id ? 'Anketani tahrirlash' : "Yangi o'quvchi"}</h3>
       <div class="field"><label>Ism familiya</label><input name="name" required value="${v('name')}" placeholder="Aziza Karimova"></div>
+      <div class="field"><label>Telefon (shu raqam bilan kiradi)</label><input name="phone" type="tel" inputmode="tel" value="${esc(prettyPhone(s.phone))}" placeholder="+998 90 123 45 67"></div>
       <div class="grid2">
         <div class="field"><label>Telegram</label><input name="telegram" value="${v('telegram')}" placeholder="aziza_k" autocapitalize="off"></div>
         <div class="field"><label>Instagram</label><input name="instagram" value="${v('instagram')}" placeholder="aziza.style" autocapitalize="off"></div>
@@ -728,6 +818,7 @@
         name: f.get('name').trim(), telegram: f.get('telegram').trim().replace(/^@/, ''), instagram: f.get('instagram').trim().replace(/^@/, ''),
         track: f.get('track'), curator: f.get('curator').trim(), startFollowers: n('startFollowers'), startReach: n('startReach'),
         startIncome: f.get('startIncome').trim(), goal: n('goal'),
+        phone: phoneKey(f.get('phone')).length === 9 ? '+998' + phoneKey(f.get('phone')) : '',
       };
       if (!patch.name) return;
       if (id) Object.assign(byId(id), patch);
@@ -853,6 +944,7 @@
         }
         break;
       case 'ig-sync': syncInstagram(true); break;
+      case 'logout': if (confirm('Akkauntdan chiqasizmi?')) logout(); break;
       case 'net-add': netSheet(id, null, t.dataset.parent || ''); break;
       case 'net-open': netSheet(id, t.dataset.nid); break;
       case 'net-share': shareNetwork(id); break;

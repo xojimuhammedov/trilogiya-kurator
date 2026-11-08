@@ -361,3 +361,24 @@ table.wk th:last-child, table.wk td:last-child { padding-right: 16px; }
 .node-res .i { width: 14px; height: 14px; }
 .field textarea { min-height: 84px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); padding: 12px 14px; font-size: 15px; outline: 0; resize: vertical; width: 100%; }
 .field textarea:focus { border-color: var(--ink); background: var(--surface); }
+
+/* ---------- kirish ---------- */
+body.auth .topbar, body.auth .tabbar { display: none; }
+body.auth .app { padding-bottom: 0; }
+.login { min-height: 100dvh; display: grid; align-content: center; justify-items: center; gap: 12px; text-align: center; padding: 24px 8px calc(24px + var(--safe-b)); max-width: 380px; margin: 0 auto; }
+.login-logo { border-radius: 18px; margin-bottom: 6px; }
+.login h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.login p { margin: 0 0 8px; }
+.phone { display: flex; align-items: center; gap: 10px; width: 100%; height: 56px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); padding: 0 16px; }
+.phone:focus-within { border-color: var(--ink); }
+.phone span { font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.phone input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 19px; font-weight: 700; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.login .btn { height: 54px; }
+.login-err { min-height: 18px; font-size: 13px; font-weight: 700; color: var(--bad); }
+.login-demo { margin-top: 10px !important; }
+.login-demo b { color: var(--ink-2); }
+
+/* o'quvchi rejimi */
+.tabbar nav.two { grid-template-columns: repeat(2, 1fr); }
+.row.me { background: var(--accent-soft); }
+a.pod:not([href]), a.row:not([href]) { cursor: default; }

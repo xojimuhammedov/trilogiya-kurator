@@ -1,6 +1,6 @@
 // Ilova qobig'i oldindan keshlanadi — internetsiz ham ochiladi.
 // Fayllarni o'zgartirganda VERSION'ni oshiring, shunda telefonlar yangisini oladi.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'trilogiya-' + VERSION;
 const SHELL = [
   './', 'index.html', 'styles.css', 'app.js', 'game.js', 'seed.js', 'manifest.webmanifest',
