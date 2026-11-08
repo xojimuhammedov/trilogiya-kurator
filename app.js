@@ -21,6 +21,7 @@
     d.students.forEach((s) => {
       s.att = fit(s.att, lessons); s.hw = fit(s.hw, lessons);
       WEEKLY.forEach((k) => { s[k] = fit(s[k], weeks); });
+      if (!Array.isArray(s.network)) s.network = [];
     });
     return d;
   }
@@ -116,6 +117,10 @@
     archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4"/>',
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     file: '<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    share: '<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 13v5.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V13"/>',
+    network: '<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M12 7.5v4M12 11.5 5 16.5M12 11.5l7 5"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
   };
   function ic(name, cls = '') { return `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 
@@ -305,7 +310,7 @@
     const weeks = Array.from({ length: Math.max(ctx.weeksElapsed, 1) }, (_, w) => w);
     const bd = st.xpBreakdown;
     const bdMax = Math.max(1, ...Object.values(bd));
-    const bdRows = [['Davomat', bd.att], ['Vazifalar', bd.hw], ['Reels', bd.video], ['Stories', bd.stories], ['Daromad', bd.income], ['Birinchi sotuv bonusi', bd.bonus], ['Obunachi o\'sishi', bd.subs], ['Reels ko\'rishlari', bd.views], ['Qamrov', bd.reach]];
+    const bdRows = [['Davomat', bd.att], ['Vazifalar', bd.hw], ['Reels', bd.video], ['Stories', bd.stories], ['Daromad', bd.income], ['Birinchi sotuv bonusi', bd.bonus], ['Obunachi o\'sishi', bd.subs], ['Reels ko\'rishlari', bd.views], ['Qamrov', bd.reach], ['Networking', bd.network]];
 
     return `<div class="stack">
       <div class="profile-head">
@@ -342,6 +347,8 @@
 
     <div class="section-title"><h2>Nishonlar</h2><span class="faint small num">${st.badges.length} / ${G.BADGES.length}</span></div>
     <div class="card"><div class="badges">${G.BADGES.map((b) => `<div class="badge ${st.badges.includes(b.id) ? '' : 'locked'}" title="${esc(b.desc)}"><div class="ic">${ic(st.badges.includes(b.id) ? b.icon : b.icon)}</div>${b.name}</div>`).join('')}</div></div>
+
+    ${networkSection(s, st)}
 
     <div class="section-title"><h2>Davomat</h2><span class="faint small num">${st.attended} / ${ctx.lessonsHeld} · ${pct(st.attPct)}</span></div>
     <div class="card"><div class="dots">${s.att.map(attDot).join('')}</div>
@@ -451,6 +458,7 @@
     reach: { label: 'Qamrov', val: (st) => st.avgReach || 0, show: (st) => compact(st.avgReach) },
     hw: { label: 'Vazifa', val: (st) => st.hwPct || 0, show: (st) => pct(st.hwPct) },
     att: { label: 'Davomat', val: (st) => st.attPct || 0, show: (st) => pct(st.attPct) },
+    network: { label: 'Networking', val: (st) => st.network.contacts, show: (st) => `${st.network.contacts} ta`, sub: (st) => `${st.network.fields} soha · ${st.network.results} natija` },
     challenge: { label: 'Chellenj', val: (st) => st.challenge || 0, show: (st) => pct(st.challenge) },
     track: { label: 'Treklar' },
   };
@@ -522,6 +530,7 @@
       <div class="r"><span>Obunachi o'sishi</span><b class="xp">${X.subsPerXp} ta = 1 XP</b></div>
       <div class="r"><span>Haftalik qamrov: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
       <div class="r"><span>Haftalik reels ko'rishlari: 1K / 10K / 100K / 1M</span><b class="xp">+15 / 20 / 25 / 30</b></div>
+      <div class="r"><span>Networking: tanishuv · xulosa · natija</span><b class="xp">+${X.contact} · +${X.takeaway} · +${X.netResult}</b></div>
     </div>
 
     <div class="section-title"><h2>Darajalar</h2></div>
@@ -559,6 +568,132 @@
     <div class="stack">
       <div class="card soon"><div class="ic">${ic('cloud')}</div><div><div style="font-weight:800">Bulutli sinxronizatsiya</div><div class="small muted" style="margin-top:4px">Bir nechta kurator bitta bazada, real vaqtda ishlaydi.</div></div></div>
     </div>`;
+  }
+
+  // ---------- NETWORKING ----------
+  const NET_RESULTS = {
+    none: "Hali natija yo'q", advice: 'Maslahat oldi', collab: 'Kollab kontent', partner: 'Hamkorlik',
+    client: 'Mijoz / sotuv', mentor: 'Mentor topdi', other: 'Boshqa natija',
+  };
+  const NET_FIELDS = ['Marketing', 'Dizayn', 'IT', 'Biznes', "Ta'lim", 'Moliya', 'Media', 'Savdo', 'Tibbiyot', 'Huquq', 'Fotografiya', 'Kursdosh'];
+  function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  function netKids(s, pid) {
+    return s.network.filter((n) => (n.parentId || '') === (pid || '')).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }
+
+  function networkSection(s, st) {
+    const N = st.network;
+    const fields = {};
+    s.network.forEach((n) => { const f = (n.field || '').trim(); if (f) fields[f] = (fields[f] || 0) + 1; });
+    const node = (n) => {
+      const ch = netKids(s, n.id);
+      return `<li><button class="node" data-act="net-open" data-id="${s.id}" data-nid="${n.id}">
+          <div class="node-top"><b>${esc(n.name)}</b>${n.field ? `<span class="tag soft">${esc(n.field)}</span>` : ''}</div>
+          <div class="node-take ${n.takeaway ? '' : 'faint'}">${n.takeaway ? esc(n.takeaway) : 'Xulosa hali yozilmagan'}</div>
+          ${n.result && n.result !== 'none' ? `<div class="node-res">${ic('check')}${NET_RESULTS[n.result] || ''}${n.resultNote ? ' · ' + esc(n.resultNote) : ''}</div>` : ''}
+        </button>${ch.length ? `<ul>${ch.map(node).join('')}</ul>` : ''}</li>`;
+    };
+    return `
+    <div class="section-title"><h2>Networking</h2>${s.network.length ? `<button data-act="net-share" data-id="${s.id}">Ulashish →</button>` : ''}</div>
+    <div class="card stack">
+      <div class="net-stats num">
+        <div><b>${N.contacts}</b><span>Tanishuv</span></div>
+        <div><b>${N.fields}</b><span>Soha</span></div>
+        <div><b>${N.takeaways}</b><span>Xulosa</span></div>
+        <div><b>${N.results}</b><span>Natija</span></div>
+      </div>
+      ${Object.keys(fields).length ? `<div class="net-fields">${Object.entries(fields).sort((a, b) => b[1] - a[1]).map(([f, c]) => `<span class="link-chip">${esc(f)}<b class="num">${c}</b></span>`).join('')}</div>` : ''}
+      <div class="tree">
+        <div class="tree-root">${avatar(s, st)}<div><div style="font-weight:800">${esc(s.name)}</div><div class="small faint">${N.contacts ? `${N.contacts} ta tanishuv · ${N.depth} bosqichli daraxt` : "Kurs davomida turli soha egalari bilan tanishing: kim bilan, qanday xulosa oldingiz va nima natija berdi."}</div></div></div>
+        ${s.network.length ? `<ul>${netKids(s, '').map(node).join('')}</ul>` : ''}
+      </div>
+      <button class="btn ghost block" data-act="net-add" data-id="${s.id}">${ic('plus')}Tanishuv qo'shish</button>
+    </div>`;
+  }
+
+  function netSheet(sid, nid, parentId) {
+    const s = byId(sid);
+    const n = nid ? s.network.find((x) => x.id === nid) : { name: '', field: '', peerId: '', parentId: parentId || '', date: todayISO(), takeaway: '', result: 'none', resultNote: '' };
+    if (!n) return;
+    // O'zi va o'zidan tarqalgan tanishuvlar "kim orqali" ro'yxatiga kirmaydi (aylana bo'lmasligi uchun)
+    const blocked = new Set();
+    if (nid) { const walk = (id) => { blocked.add(id); s.network.filter((x) => x.parentId === id).forEach((x) => walk(x.id)); }; walk(nid); }
+    const parents = s.network.filter((x) => !blocked.has(x.id));
+    const peers = data.students.filter((x) => x.id !== sid && !x.archived);
+    const v = (k) => esc(n[k] ?? '');
+    const el = document.createElement('div');
+    el.className = 'overlay';
+    el.innerHTML = `<form class="sheet stack">
+      <div class="grab"></div>
+      <h3>${nid ? 'Tanishuv' : parentId ? `${esc((s.network.find((x) => x.id === parentId) || {}).name || '')} orqali tanishuv` : 'Yangi tanishuv'}</h3>
+      <div class="field"><label>Kursdoshmi?</label><select name="peerId"><option value="">Yo'q — tashqi odam</option>${peers.map((p) => `<option value="${p.id}" ${n.peerId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Ism</label><input name="name" value="${v('name')}" placeholder="Dilshod Karimov"></div>
+        <div class="field"><label>Soha</label><input name="field" list="net-fields" value="${v('field')}" placeholder="Marketing"></div>
+        <div class="field"><label>Kim orqali tanishdi</label><select name="parentId"><option value="">O'zi bevosita</option>${parents.map((p) => `<option value="${p.id}" ${n.parentId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>Sana</label><input type="date" name="date" value="${v('date')}"></div>
+      </div>
+      <datalist id="net-fields">${NET_FIELDS.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
+      <div class="field"><label>Qanday xulosa oldi?</label><textarea name="takeaway" placeholder="Masalan: reels'ning birinchi 3 soniyasi hal qiladi — savol bilan boshlash kerak">${v('takeaway')}</textarea></div>
+      <div class="grid2">
+        <div class="field"><label>Natija</label><select name="result">${Object.entries(NET_RESULTS).map(([k, l]) => `<option value="${k}" ${n.result === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Natija haqida</label><input name="resultNote" value="${v('resultNote')}" placeholder="2 ta kollab reels"></div>
+      </div>
+      <button class="btn block" type="submit">Saqlash</button>
+      ${nid ? `<div class="grid2">
+        <button class="btn ghost" type="button" data-net="child">${ic('network')}Shu orqali</button>
+        <button class="btn danger" type="button" data-net="delete">${ic('trash')}O'chirish</button></div>` : ''}
+    </form>`;
+    const close = () => el.remove();
+    el.addEventListener('click', (e) => {
+      if (e.target === el) return close();
+      const b = e.target.closest('[data-net]');
+      if (!b) return;
+      if (b.dataset.net === 'child') { close(); netSheet(sid, null, nid); }
+      if (b.dataset.net === 'delete' && confirm(`«${n.name}» bilan tanishuv o'chirilsinmi? Uning orqali tanishganlar bir bosqich yuqoriga ko'chadi.`)) {
+        s.network.forEach((x) => { if (x.parentId === nid) x.parentId = n.parentId || ''; });
+        s.network = s.network.filter((x) => x.id !== nid);
+        commit(sid); close(); render(true);
+      }
+    });
+    el.querySelector('[name="peerId"]').addEventListener('change', (e) => {
+      const p = byId(e.target.value);
+      const f = el.querySelector('form');
+      if (p) { f.name.value = f.name.value || p.name; f.field.value = f.field.value || 'Kursdosh'; }
+    });
+    el.querySelector('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const peer = byId(f.get('peerId'));
+      const rec = {
+        name: f.get('name').trim() || (peer ? peer.name : ''),
+        field: f.get('field').trim() || (peer ? 'Kursdosh' : ''),
+        peerId: f.get('peerId'), parentId: f.get('parentId'), date: f.get('date'),
+        takeaway: f.get('takeaway').trim(), result: f.get('result'), resultNote: f.get('resultNote').trim(),
+      };
+      if (!rec.name) { toast('Ismni kiriting'); return; }
+      if (nid) Object.assign(n, rec);
+      else s.network.push(Object.assign({ id: 'n' + Date.now().toString(36) }, rec));
+      commit(sid); close(); render(true);
+    });
+    document.body.appendChild(el);
+  }
+
+  async function shareNetwork(sid) {
+    const s = byId(sid);
+    const lines = [];
+    const walk = (pid, depth) => netKids(s, pid).forEach((n) => {
+      const res = n.result && n.result !== 'none' ? ` → ${NET_RESULTS[n.result]}${n.resultNote ? ' (' + n.resultNote + ')' : ''}` : '';
+      lines.push(`${'   '.repeat(depth)}• ${n.name}${n.field ? ' — ' + n.field : ''}${n.takeaway ? ': ' + n.takeaway : ''}${res}`);
+      walk(n.id, depth + 1);
+    });
+    walk('', 0);
+    const text = `${s.name} · networking (${data.settings.courseName})\n\n${lines.join('\n')}`;
+    try {
+      if (navigator.share) { await navigator.share({ text }); return; }
+      await navigator.clipboard.writeText(text);
+      toast('Nusxalandi — Telegram guruhga tashlang');
+    } catch (e) { /* foydalanuvchi bekor qildi */ }
   }
 
   // ---------- o'quvchi formasi ----------
@@ -600,7 +735,7 @@
         const S = data.settings;
         const blank = (len) => Array(len).fill(null);
         const nid = 's' + Date.now().toString(36);
-        data.students.push(Object.assign({ id: nid, att: blank(S.lessons), hw: blank(S.lessons), reach: blank(S.weeks), subs: blank(S.weeks), income: blank(S.weeks), video: blank(S.weeks), stories: blank(S.weeks) }, patch));
+        data.students.push(Object.assign({ id: nid, network: [], att: blank(S.lessons), hw: blank(S.lessons), reach: blank(S.weeks), subs: blank(S.weeks), income: blank(S.weeks), video: blank(S.weeks), stories: blank(S.weeks) }, patch));
         commit();
         el.remove();
         location.hash = '#/s/' + nid;
@@ -625,10 +760,10 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   function csv() {
-    const head = ['№', 'Ism familiya', 'Telegram', 'Instagram', 'Trek', 'Kurator', 'Boshl. obunachi', 'Maqsad ($)', 'Hozirgi obunachi', "O'sish", "O'rtacha qamrov", 'Daromad ($)', 'Vazifa %', 'Davomat %', 'Chellenj %', 'Holat', 'XP', 'Daraja', 'Nishonlar'];
+    const head = ['№', 'Ism familiya', 'Telegram', 'Instagram', 'Trek', 'Kurator', 'Boshl. obunachi', 'Maqsad ($)', 'Hozirgi obunachi', "O'sish", "O'rtacha qamrov", 'Daromad ($)', 'Vazifa %', 'Davomat %', 'Chellenj %', 'Holat', 'XP', 'Daraja', 'Nishonlar', 'Tanishuvlar'];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const p = (v) => (v === null ? '' : Math.round(v * 100));
-    const lines = calc.rows.map((r, i) => [i + 1, r.s.name, r.s.telegram, r.s.instagram, r.s.track, r.s.curator, r.s.startFollowers, r.s.goal, r.st.lastSubs, r.st.growth, r.st.avgReach && Math.round(r.st.avgReach), r.st.income, p(r.st.hwPct), p(r.st.attPct), p(r.st.challenge), G.STATUSES[r.st.status].label, r.st.xp, r.st.level.name, r.st.badges.length].map(q).join(','));
+    const lines = calc.rows.map((r, i) => [i + 1, r.s.name, r.s.telegram, r.s.instagram, r.s.track, r.s.curator, r.s.startFollowers, r.s.goal, r.st.lastSubs, r.st.growth, r.st.avgReach && Math.round(r.st.avgReach), r.st.income, p(r.st.hwPct), p(r.st.attPct), p(r.st.challenge), G.STATUSES[r.st.status].label, r.st.xp, r.st.level.name, r.st.badges.length, r.st.network.contacts].map(q).join(','));
     return '﻿' + [head.map(q).join(','), ...lines].join('\n');
   }
 
@@ -718,6 +853,9 @@
         }
         break;
       case 'ig-sync': syncInstagram(true); break;
+      case 'net-add': netSheet(id, null, t.dataset.parent || ''); break;
+      case 'net-open': netSheet(id, t.dataset.nid); break;
+      case 'net-share': shareNetwork(id); break;
       case 'restore': delete byId(id).archived; commit(); render(true); toast('Qaytarildi'); break;
       case 'theme': setPref('theme', v); applyTheme(); render(true); break;
       case 'install': if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; render(true); }); } break;

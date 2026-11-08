@@ -15,6 +15,9 @@ const XP = {
   subsPerXp: 20,     // har 20 yangi obunachi = 1 XP
   reachStep: 5,      // qamrov: 5 × (raqamdagi xonalar soni - 1)
   viewStep: 5,       // reels ko'rishlari: xuddi qamrov kabi shkala
+  contact: 15,       // yangi tanishuv (networking)
+  takeaway: 10,      // tanishuvdan xulosa yozilsa
+  netResult: 25,     // tanishuv natija bersa (hamkorlik, mijoz, kollab...)
 };
 
 const LEVELS = [
@@ -48,6 +51,9 @@ const BADGES = [
   { id: 'reach100k', icon: 'eye', name: '100K qamrov', desc: 'Bir haftada 100 000+ qamrov', test: (st) => st.maxReach >= 100000 },
   { id: 'reach1m', icon: 'zap', name: 'Million qamrov', desc: 'Bir haftada 1 000 000+ qamrov', test: (st) => st.maxReach >= 1000000 },
   { id: 'growth1k', icon: 'trending', name: '+1 000 obunachi', desc: "Boshlang'ichdan 1 000+ o'sish", test: (st) => st.growth >= 1000 },
+  { id: 'networker', icon: 'network', name: 'Networker', desc: '5 ta va undan ko\'p tanishuv', test: (st) => st.network.contacts >= 5 },
+  { id: 'bridge', icon: 'share', name: "Ko'prik", desc: 'Tanishi orqali yangi odam bilan tanishdi', test: (st) => st.network.depth >= 2 },
+  { id: 'diverse', icon: 'sparkles', name: 'Turli sohalar', desc: '4 xil soha egasi bilan tanishdi', test: (st) => st.network.fields >= 4 },
 ];
 
 function num(v) {
@@ -174,7 +180,7 @@ function studentStats(s, ctx) {
   }
 
   // XP
-  const bd = { att: 0, hw: 0, video: 0, stories: 0, income: 0, subs: 0, reach: 0, views: 0, bonus: 0 };
+  const bd = { att: 0, hw: 0, video: 0, stories: 0, income: 0, subs: 0, reach: 0, views: 0, network: 0, bonus: 0 };
   s.att.forEach((v) => { const n = num(v); if (n >= 1) bd.att += XP.live; else if (n > 0) bd.att += XP.record; });
   bd.hw = s.hw.filter((v) => num(v) > 0).length * XP.homework;
   st.weekly = [];
@@ -186,6 +192,19 @@ function studentStats(s, ctx) {
     bd.video += p.video; bd.stories += p.stories; bd.income += p.income; bd.subs += p.subs; bd.reach += p.reach; bd.views += p.views;
   }
   if (st.income > 0) bd.bonus += XP.firstSale;
+
+  // Networking: tanishuvlar daraxti (parentId — kim orqali tanishgani)
+  const net = s.network || [];
+  const byId = Object.fromEntries(net.map((n) => [n.id, n]));
+  const depthOf = (n, guard = 0) => (n.parentId && byId[n.parentId] && guard < 50 ? 1 + depthOf(byId[n.parentId], guard + 1) : 1);
+  st.network = {
+    contacts: net.length,
+    fields: new Set(net.map((n) => (n.field || '').trim().toLowerCase()).filter(Boolean)).size,
+    takeaways: net.filter((n) => (n.takeaway || '').trim()).length,
+    results: net.filter((n) => n.result && n.result !== 'none').length,
+    depth: net.reduce((m, n) => Math.max(m, depthOf(n)), 0),
+  };
+  bd.network = st.network.contacts * XP.contact + st.network.takeaways * XP.takeaway + st.network.results * XP.netResult;
   st.xpBreakdown = bd;
   st.xp = Object.values(bd).reduce((a, b) => a + b, 0);
   st.level = levelFor(st.xp);

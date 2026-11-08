@@ -337,3 +337,27 @@ table.wk th:last-child, table.wk td:last-child { padding-right: 16px; }
   .num-input { width: 92px; }
   .tri button { min-width: 42px; padding: 0 5px; }
 }
+
+/* ---------- networking daraxti ---------- */
+.net-stats { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; gap: 4px; }
+.net-stats b { display: block; font-size: 20px; font-weight: 800; }
+.net-stats span { font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+.net-fields { display: flex; flex-wrap: wrap; gap: 6px; }
+.net-fields .link-chip b { color: var(--ink-3); margin-left: 2px; }
+.tree-root { display: flex; gap: 12px; align-items: center; }
+.tree > ul { margin-left: 10px; }
+.tree ul { list-style: none; margin: 0; padding: 0 0 0 22px; }
+.tree li { position: relative; padding-top: 10px; }
+.tree li::before { content: ""; position: absolute; left: -12px; top: 0; bottom: 0; border-left: 2px solid var(--line); }
+.tree li:last-child::before { bottom: auto; height: 32px; }
+.tree li::after { content: ""; position: absolute; left: -12px; top: 32px; width: 12px; border-top: 2px solid var(--line); }
+.node { display: block; width: 100%; text-align: left; background: var(--surface-2); border-radius: 14px; padding: 10px 12px; }
+.node:active { transform: scale(.99); }
+.node-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tag.soft { background: var(--surface); color: var(--ink-2); text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+.node-take { font-size: 13px; color: var(--ink-2); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.node-take.faint { color: var(--ink-3); }
+.node-res { display: inline-flex; gap: 4px; align-items: center; margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--ok); }
+.node-res .i { width: 14px; height: 14px; }
+.field textarea { min-height: 84px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); padding: 12px 14px; font-size: 15px; outline: 0; resize: vertical; width: 100%; }
+.field textarea:focus { border-color: var(--ink); background: var(--surface); }

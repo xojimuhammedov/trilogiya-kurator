@@ -45,8 +45,20 @@ Fayllarni yangilaganda `sw.js` dagi `VERSION` ni oshiring — telefonlar yangi v
 | Obunachi o'sishi | 20 ta = 1 XP |
 | Haftalik qamrov 1K/10K/100K/1M | +15/20/25/30 |
 
+| Networking: tanishuv · xulosa · natija | +15 · +10 · +25 |
+
 8 daraja: Yangi → Ijodkor → Kontentchi → Blogger → Trend → Influencer → Star → Legenda.
 12 ta nishon. Barcha qiymatlar xom raqamlardan har safar qayta hisoblanadi.
+
+## Networking
+
+O'quvchi profilida **Networking** bo'limi bor. Kurs davomida kim bilan tanishgani (ism, soha, kursdoshmi),
+undan qanday **xulosa** olgani va bu tanishuv qanday **natija** berganini (maslahat, kollab, hamkorlik, mijoz, mentor) yoziladi.
+
+- Tanishuvlar **daraxt** ko'rinishida: «Kim orqali tanishdi» tanlansa, yangi odam o'sha tanishning ostiga shoxlanadi.
+- «Ulashish» tugmasi butun daraxtni xulosalari bilan matn qilib, Telegram guruhga tashlashga tayyorlaydi.
+- Nishonlar: Networker (5+ tanishuv), Ko'prik (tanish orqali tanishuv), Turli sohalar (4+ soha).
+- Reytingda alohida «Networking» bo'limi.
 
 ## Jadvaldan farqlar
 
