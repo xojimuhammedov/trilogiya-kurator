@@ -44,11 +44,11 @@ Fayllarni yangilaganda `sw.js` dagi `VERSION` ni oshiring — telefonlar yangi v
 | Birinchi sotuv | +100 |
 | Obunachi o'sishi | 20 ta = 1 XP |
 | Haftalik qamrov 1K/10K/100K/1M | +15/20/25/30 |
-
+| Haftalik reels ko'rishlari 1K/10K/100K/1M | +15/20/25/30 |
 | Networking: tanishuv · xulosa · natija | +15 · +10 · +25 |
 
 8 daraja: Yangi → Ijodkor → Kontentchi → Blogger → Trend → Influencer → Star → Legenda.
-12 ta nishon. Barcha qiymatlar xom raqamlardan har safar qayta hisoblanadi.
+15 ta nishon. Barcha qiymatlar xom raqamlardan har safar qayta hisoblanadi.
 
 ## Networking
 
